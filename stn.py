@@ -6,6 +6,8 @@ import torch.optim as optim
 import torchvision
 import matplotlib.pyplot as plt
 import numpy as np
+from statistics import mean
+from visualise import save
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -41,16 +43,13 @@ class STNet(nn.Module):
             nn.MaxPool2d(2, stride=2)
         )
 
-        # Regressor for the 3 * 2 affine matrix
         self.fc_loc = nn.Sequential(
             nn.Linear(64 * 8 * 8, 3 * 2),
         )
 
-        # Initialize the weights/bias with identity transformation
         self.fc_loc[0].weight.data.zero_()
         self.fc_loc[0].bias.data.copy_(torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
 
-    #STN Forward Function
     def stn(self, x):
         xs = self.localization(x)
         xs = xs.view(-1, 64 * 8 * 8)
@@ -69,7 +68,7 @@ class STNet(nn.Module):
 
 model = STNet().to(device)
 
-optimizer = optim.SGD(model.parameters(), lr=0.01)
+optimizer = optim.SGD(model.parameters(), lr=0.0001)
 
 loss_type = nn.MSELoss() 
       
@@ -85,29 +84,22 @@ def stn_train(epoch, train_loader):
             loss = loss_type(outputs, labels)
             loss.backward()
             optimizer.step()
-            
             print(e, i, loss.item())
-            
-#            for param in model.named_parameters():
-#                print(param.data)
-#        
-#train(225)
-# 8 is optimum
-   
+             
 #print("original images")   
 #dataiter = iter(test_loader)
 #images, labels = dataiter.next() #Use for loops to print more
 #imshow(torchvision.utils.make_grid(images))
             
 def stn_test(test_loader):
-    pred = []
+    i = 0
     with torch.no_grad():
         for data in test_loader:
             images = data[0].to(device)
-            outputs = model(images)
-            pred.append(outputs)
-            
-    return pred
+            output = model(images)
+            i += 1
+            save(torchvision.utils.make_grid(output.cpu()), str(i))
+        
         
 #pred_r = test()
 #print("predicted images")

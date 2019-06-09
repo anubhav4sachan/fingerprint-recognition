@@ -5,7 +5,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = torch.device("cpu")
 
 class BasicConv2d(nn.Module):
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0):
@@ -35,9 +34,9 @@ class DeConv2d(nn.Module):
         x = self.relu(x)
         return x
 
-class Minutiae(nn.Module):
+class Minutiae1a(nn.Module):
     def __init__(self):
-        super(Minutiae, self).__init__()
+        super(Minutiae1a, self).__init__()
         self.fc1 = nn.Linear(1024, 256)
         
         self.block1 = nn.Sequential(
@@ -50,10 +49,29 @@ class Minutiae(nn.Module):
                 )
         
         self.block1a = nn.Sequential(
-                DeConv2d(384, 128, kernel_size=3),
+                DeConv2d(384, 128, kernel_size=3, stride=3, padding=1),
                 BasicConv2d(128, 128, kernel_size=3),
-                DeConv2d(128, 32, kernel_size=3),
-                BasicConv2d(32, 6, kernel_size=3)
+                DeConv2d(128, 32, kernel_size=3, stride=3, padding=1),
+                BasicConv2d(32, 6, kernel_size=3, padding=1)
+                )
+        
+    def forward(self, x):
+        x = self.block1(x)
+        x = self.block1a(x)
+        return x
+    
+class Minutiae1b(nn.Module):
+    def __init__(self):
+        super(Minutiae1b, self).__init__()
+        self.fc1 = nn.Linear(1024, 256)
+        
+        self.block1 = nn.Sequential(
+                Inception_A(),
+                Inception_A(),
+                Inception_A(),
+                Inception_A(),
+                Inception_A(),
+                Inception_A()
                 )
         
         self.block1b = nn.Sequential(
@@ -66,12 +84,12 @@ class Minutiae(nn.Module):
                 )
         
     def forward(self, x):
+        x = self.block1(x)
         x = self.block1b(x)
         x = x.view(-1, 1024)
         x = self.fc1(x)
         return x
     
 #from torchsummary import summary
-#model = Minutiae().to(device)
+#model = Minutiae1b().to(device)
 #summary(model, (384, 14, 14))
-##print(model.last_linear)
