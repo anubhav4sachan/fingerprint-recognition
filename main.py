@@ -11,7 +11,7 @@ from stn import STNet, stn_train, stn_test
 from stem import Stem
 from visualise import imshow, save, plot_pores
 from texture import Texture
-from minutiae1a import Minutiae1a, Minutiae1b
+from minutiae import Minutiae1a, Minutiae1b
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -100,7 +100,7 @@ for j in range (15):
     
     for i, data in enumerate(trainloader):
         inputs, target = data[0].to(device), data[1].to(device)
-        
+        target_f = torch.Tensor.float(target)
         optimizer1.zero_grad()
         optimizer2a.zero_grad()
         optimizer2b.zero_grad()
@@ -109,7 +109,7 @@ for j in range (15):
         output2a = model2a(inputs)
         output2b = model2b(inputs)[0]
         
-        loss = (criterion1(F.softmax(output1), target) + criterion2a(output2a, target) + 
+        loss = (criterion1(F.softmax(output1), target) + criterion2a(output2a, target_f) + 
                 criterion2b(F.softmax(output2b), target))
         loss.backward()
         
@@ -140,5 +140,3 @@ for i in tt:
     for j in to:
         score.append(F.cosine_similarity(i, j).item())
     scores.append(score)
-
-print(max(scores))
