@@ -84,39 +84,43 @@ test_dataset = torchvision.datasets.ImageFolder(root='./imgs/test/',
                                                 transform=Transform)
 
 train_loader=torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=True)
-test_loader=torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False) 
+test_loader=torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-stn_train(10, train_loader)
-stn_test(train_loader)
+train_loader_org=torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=False)
 
-trainloader=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='./aligned/', 
-                                           transform=Transform), batch_size=1, shuffle=True)
+folder = "shuffled"
+stn_train(24, train_loader)
+stn_test(train_loader, folder)
 
+trainloader=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='./aligned/shuffled/', 
+                                          transform=Transform), batch_size=1, shuffle=True)
+
+folder = "original"
+stn_test(train_loader_org, folder)
+
+trainloader_org=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='./aligned/original', 
+                                          transform=Transform), batch_size=1, shuffle=False)
 # Train the model
-for j in range (15):
+
+for j in range (50):
     model1.train()
     model2a.train()
     model2b.train()
-    
     for i, data in enumerate(trainloader):
         inputs, target = data[0].to(device), data[1].to(device)
         target_f = torch.Tensor.float(target)
         optimizer1.zero_grad()
         optimizer2a.zero_grad()
         optimizer2b.zero_grad()
-        
         output1 = model1(inputs)[0]
         output2a = model2a(inputs)
         output2b = model2b(inputs)[0]
-        
         loss = (criterion1(F.softmax(output1), target) + criterion2a(output2a, target_f) + 
                 criterion2b(F.softmax(output2b), target))
         loss.backward()
-        
         optimizer1.step()
         optimizer2a.step()
         optimizer2b.step()
-        
         print(j, i, loss.item())
 
 tt = []      #T_test 
@@ -127,7 +131,7 @@ for data in test_loader:
     tt.append(torch.cat((output1, output2), dim=1))
     
 to = []       #T_original
-for data in trainloader:
+for data in trainloader_org:
     img = data[0].to(device)
     o1 = model1(img)[1]
     o2 = model2b(img)[1]
@@ -138,5 +142,8 @@ scores = []
 for i in tt:
     score = []
     for j in to:
-        score.append(F.cosine_similarity(i, j).item())
+        score.append(F.cosine_similarity(i, j, dim=1).item())
     scores.append(score)
+    
+for k in scores:
+    print(max(k))

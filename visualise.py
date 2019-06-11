@@ -10,10 +10,10 @@ def imshow(img):
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.show()
     
-def save(img, name):
+def save(img, name, folder):
     npimg = img.detach().numpy()
     x = np.transpose(npimg, (1, 2, 0))
-    imsave("./aligned/1/" + name + ".jpg", x)
+    imsave("./aligned/" + str(folder) + "/1/" + name + ".jpg", x)
     
 def plot_pores():   
     filelist = []

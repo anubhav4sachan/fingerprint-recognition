@@ -91,14 +91,14 @@ def stn_train(epoch, train_loader):
 #images, labels = dataiter.next() #Use for loops to print more
 #imshow(torchvision.utils.make_grid(images))
             
-def stn_test(test_loader):
+def stn_test(test_loader, folder):
     i = 0
     with torch.no_grad():
         for data in test_loader:
             images = data[0].to(device)
             output = model(images)
             i += 1
-            save(torchvision.utils.make_grid(output.cpu()), str(i))
+            save(torchvision.utils.make_grid(output.cpu()), str(i), folder)
         
         
 #pred_r = test()
