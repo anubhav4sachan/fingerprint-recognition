@@ -21,6 +21,7 @@ class TextureNet(nn.Module):
         
         self.fc = nn.Linear(256, 1)
         self.feature1 = nn.Sequential(
+                STNet(),
                 Stem(),
                 Texture()
                 )
@@ -37,6 +38,7 @@ class Minutiae2aNet(nn.Module):
     def __init__(self):
         super(Minutiae2aNet, self).__init__()
         self.feature2a = nn.Sequential(
+                STNet(),
                 Stem(),
                 Minutiae1a()
                 )
@@ -50,6 +52,7 @@ class Minutiae2bNet(nn.Module):
         super(Minutiae2bNet, self).__init__()
         self.fc = nn.Linear(256, 1)
         self.feature2b = nn.Sequential(
+                STNet(),
                 Stem(),
                 Minutiae1b()
                 )
@@ -88,41 +91,45 @@ test_loader=torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=Fals
 
 train_loader_org=torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=False)
 
-folder = "shuffled"
-stn_train(24, train_loader)
-stn_test(train_loader, folder)
+stn_test(train_loader, 'shuffled')
 
-trainloader=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='./aligned/shuffled/', 
+trainloader=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='./shuffled/', 
                                           transform=Transform), batch_size=1, shuffle=True)
 
-folder = "original"
-stn_test(train_loader_org, folder)
+#
+#trainloader_org=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='./aligned/original', 
+#                                          transform=Transform), batch_size=1, shuffle=False)
 
-trainloader_org=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='./aligned/original', 
-                                          transform=Transform), batch_size=1, shuffle=False)
+
 # Train the model
 
 for j in range (50):
     model1.train()
     model2a.train()
     model2b.train()
+    
     for i, data in enumerate(trainloader):
         inputs, target = data[0].to(device), data[1].to(device)
         target_f = torch.Tensor.float(target)
+        
         optimizer1.zero_grad()
         optimizer2a.zero_grad()
         optimizer2b.zero_grad()
+        
         output1 = model1(inputs)[0]
         output2a = model2a(inputs)
         output2b = model2b(inputs)[0]
+        
         loss = (criterion1(F.softmax(output1), target) + criterion2a(output2a, target_f) + 
                 criterion2b(F.softmax(output2b), target))
         loss.backward()
+        
         optimizer1.step()
         optimizer2a.step()
         optimizer2b.step()
+        
         print(j, i, loss.item())
-
+        
 tt = []      #T_test 
 for data in test_loader:
     img = data[0].to(device)
@@ -131,7 +138,7 @@ for data in test_loader:
     tt.append(torch.cat((output1, output2), dim=1))
     
 to = []       #T_original
-for data in trainloader_org:
+for data in train_loader_org:
     img = data[0].to(device)
     o1 = model1(img)[1]
     o2 = model2b(img)[1]

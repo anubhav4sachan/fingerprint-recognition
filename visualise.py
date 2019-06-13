@@ -13,7 +13,7 @@ def imshow(img):
 def save(img, name, folder):
     npimg = img.detach().numpy()
     x = np.transpose(npimg, (1, 2, 0))
-    imsave("./aligned/" + str(folder) + "/1/" + name + ".jpg", x)
+    imsave("./" + str(folder) + "/1/" + name + ".jpg", x)
     
 def plot_pores():   
     filelist = []

@@ -14,6 +14,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #Viewing size of a tensor.
 #for batch_idx, batch in enumerate(train_loader):
 #    print(batch_idx, batch[0].size())
+
 class BasicConv2d(nn.Module):
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0):
         super(BasicConv2d, self).__init__()
@@ -90,6 +91,9 @@ def stn_train(epoch, train_loader):
 #dataiter = iter(test_loader)
 #images, labels = dataiter.next() #Use for loops to print more
 #imshow(torchvision.utils.make_grid(images))
+
+
+# 'stn_test' is the output of the STNet
             
 def stn_test(test_loader, folder):
     i = 0
