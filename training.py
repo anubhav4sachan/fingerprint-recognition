@@ -81,13 +81,13 @@ Transform = torchvision.transforms.Compose([torchvision.transforms.Grayscale(),
                                             torchvision.transforms.Resize((132,132)),
                                             torchvision.transforms.ToTensor()])
 
-train_dataset = torchvision.datasets.ImageFolder(root='./imgs/train/', 
+train_dataset = torchvision.datasets.ImageFolder(root='./imgs/', 
                                            transform=Transform)        
-test_dataset = torchvision.datasets.ImageFolder(root='./imgs/test/',
-                                                transform=Transform)
+#test_dataset = torchvision.datasets.ImageFolder(root='./imgs/test/',
+#                                                transform=Transform)
 
 train_loader=torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=True)
-test_loader=torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False)
+#test_loader=torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 train_loader_org=torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=False)
 
@@ -130,27 +130,6 @@ for j in range (50):
         
         print(j, i, loss.item())
         
-tt = []      #T_test 
-for data in test_loader:
-    img = data[0].to(device)
-    output1 = model1(img)[1]
-    output2 = model2b(img)[1]
-    tt.append(torch.cat((output1, output2), dim=1))
-    
-to = []       #T_original
-for data in train_loader_org:
-    img = data[0].to(device)
-    o1 = model1(img)[1]
-    o2 = model2b(img)[1]
-    to.append(torch.cat((o1, o2), dim=1))
-    
-#Calculating similarity scores
-scores = []
-for i in tt:
-    score = []
-    for j in to:
-        score.append(F.cosine_similarity(i, j, dim=1).item())
-    scores.append(score)
-    
-for k in scores:
-    print(max(k))
+torch.save(model1, 'trained1.pth')
+torch.save(model2a, 'trained2a.pth')
+torch.save(model2b, 'trained2b.pth')
