@@ -103,7 +103,7 @@ trainloader=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='.
 
 # Train the model
 
-for j in range (50):
+for j in range (10):
     model1.train()
     model2a.train()
     model2b.train()
