@@ -6,19 +6,28 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 __all__ = ['ResNet', 'poreNet']
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
-    """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=dilation, groups=groups, bias=False, dilation=dilation)
 
 
 def conv1x1(in_planes, out_planes, stride=1):
-    """1x1 convolution"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 class Flatten(nn.Module):
     def forward(self, x):
         x = x.view(x.size()[0], -1)
         return x
+    
+class L2Normalization(nn.Module):
+    def __init__(self):
+        super(L2Normalization, self).__init__()
+
+    def forward(self, input):
+        input = input.squeeze()
+        return input.div(torch.norm(input, dim=1).view(-1, 1))
+
+    def __repr__(self):
+        return self.__class__.__name__
 
 class Bottleneck(nn.Module):
     expansion = 2
@@ -92,18 +101,11 @@ class ResNet(nn.Module):
         self.layer1 = self._make_layer(block, 32, layers[0])
         self.layer2 = self._make_layer(block, 64, layers[1], stride=1,
                                        dilate=replace_stride_with_dilation[0])
-#        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
-#                                       dilate=replace_stride_with_dilation[1])
-#        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
-#                                       dilate=replace_stride_with_dilation[2])
-        self.layer5 = nn.Sequential(
+        self.layer3 = nn.Sequential(
                 nn.Conv2d(128, 1, kernel_size=3, stride=1, padding=1)
-#                nn.BatchNorm2d(1),
-#                nn.ReLU(True)
                 )
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(64 * block.expansion, num_classes)
         self.flatten = Flatten()
+        self.L2Norm = L2Normalization()
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -148,18 +150,13 @@ class ResNet(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-#        x = self.maxpool(x)
-
+        
         x = self.layer1(x)
         x = self.layer2(x)
-#        x = self.layer3(x)
-#        x = self.layer4(x)
-        x = self.layer5(x)
-#        x = self.avgpool(x)
-#        x = x.view(x.size(0), -1)
+        x = self.layer3(x)
+
         x = self.flatten(x)
-        x = nn.functional.normalize(x)
-#        x = self.fc(x)
+        x = self.L2Norm(x)
 
         return x
 
@@ -173,12 +170,7 @@ def poreNet(pretrained=False, progress=True, **kwargs):
                    **kwargs)
     
     
-from torchsummary import summary 
-from torchvision import models
-
-#model1 = models.resnet50().to(device)
-#summary(model1, (3, 41, 41))  
- 
+from torchsummary import summary
+  
 model = poreNet().to(device)
 summary(model, (1, 41, 41))
-#print(model)
