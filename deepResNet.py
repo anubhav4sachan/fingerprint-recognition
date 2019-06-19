@@ -3,49 +3,33 @@ import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-__all__ = ['ResNet', 'poreNet']
+__all__ = ['ResNet', 'deepResNet']
+
+def conv1x1(in_planes, out_planes, stride=1):
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=dilation, groups=groups, bias=False, dilation=dilation)
 
-
-def conv1x1(in_planes, out_planes, stride=1):
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
-
-class Flatten(nn.Module):
-    def forward(self, x):
-        x = x.view(x.size()[0], -1)
-        return x
-    
-class L2Normalization(nn.Module):
-    def __init__(self):
-        super(L2Normalization, self).__init__()
-
-    def forward(self, input):
-        input = input.squeeze()
-        return input.div(torch.norm(input, dim=1).view(-1, 1))
-
-    def __repr__(self):
-        return self.__class__.__name__
-
-class Bottleneck(nn.Module):
-    expansion = 2
+class BasicBlock(nn.Module):
+    expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
                  base_width=64, dilation=1, norm_layer=None):
-        super(Bottleneck, self).__init__()
+        super(BasicBlock, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
-        width = int(planes * (base_width / 64.)) * groups
-        # Both self.conv2 and self.downsample layers downsample the input when stride != 1
-        self.conv1 = conv1x1(inplanes, width)
-        self.bn1 = norm_layer(width)
-        self.conv2 = conv3x3(width, width, stride, groups, dilation)
-        self.bn2 = norm_layer(width)
-        self.conv3 = conv1x1(width, planes * self.expansion)
-        self.bn3 = norm_layer(planes * self.expansion)
+        if groups != 1 or base_width != 64:
+            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+        if dilation > 1:
+            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = norm_layer(planes)
         self.downsample = downsample
         self.stride = stride
 
@@ -58,10 +42,6 @@ class Bottleneck(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.relu(out)
-
-        out = self.conv3(out)
-        out = self.bn3(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -71,10 +51,9 @@ class Bottleneck(nn.Module):
 
         return out
 
-
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1681, zero_init_residual=False,
+    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
         super(ResNet, self).__init__()
@@ -82,7 +61,7 @@ class ResNet(nn.Module):
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
 
-        self.inplanes = 16
+        self.inplanes = 64
         self.dilation = 1
         if replace_stride_with_dilation is None:
             # each element in the tuple indicates if we should replace
@@ -93,19 +72,26 @@ class ResNet(nn.Module):
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=3, stride=1, padding=1,
+        self.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=7, stride=1, padding=1,
                                bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 32, layers[0])
-        self.layer2 = self._make_layer(block, 64, layers[1], stride=1,
+
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=1,
                                        dilate=replace_stride_with_dilation[0])
-        self.layer3 = nn.Sequential(
-                nn.Conv2d(128, 1, kernel_size=3, stride=1, padding=1)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=1,
+                                       dilate=replace_stride_with_dilation[1])
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=1,
+                                       dilate=replace_stride_with_dilation[2])
+        self.layer5 = nn.Sequential(
+                nn.Conv2d(512, 1, kernel_size=3, padding=1),
+                nn.BatchNorm2d(1),
+                nn.ReLU(True)
                 )
-        self.flatten = Flatten()
-        self.L2Norm = L2Normalization()
+                
+
+        self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -119,8 +105,8 @@ class ResNet(nn.Module):
         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
         if zero_init_residual:
             for m in self.modules():
-                if isinstance(m, Bottleneck):
-                    nn.init.constant_(m.bn3.weight, 0)
+                if isinstance(m, BasicBlock):
+                    nn.init.constant_(m.bn2.weight, 0)
 
     def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
         norm_layer = self._norm_layer
@@ -154,9 +140,12 @@ class ResNet(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
+        x = self.layer4(x)
 
-        x = self.flatten(x)
-        x = self.L2Norm(x)
+        x = self.layer5(x)
+#        x = self.avgpool(x)
+#        x = x.view(x.size(0), -1)
+#        x = self.fc(x)
 
         return x
 
@@ -165,12 +154,12 @@ def _resnet(arch, inplanes, planes, pretrained, progress, **kwargs):
     model = ResNet(inplanes, planes, **kwargs)
     return model
 
-def poreNet(pretrained=False, progress=True, **kwargs):
-    return _resnet('poreNet', Bottleneck, [2, 2], pretrained, progress,
+
+def deepResNet(pretrained=False, progress=True, **kwargs):
+    return _resnet('deepResNet', BasicBlock, [2, 2, 2, 2], pretrained, progress,
                    **kwargs)
     
-    
-#from torchsummary import summary
-#  
-#model = poreNet().to(device)
-#summary(model, (16, 41, 41))
+from torchsummary import summary
+  
+model = deepResNet().to(device)
+summary(model, (1, 84, 84))

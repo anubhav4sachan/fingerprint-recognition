@@ -89,12 +89,12 @@ train_dataset = torchvision.datasets.ImageFolder(root='./imgs/',
 train_loader=torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=True)
 #test_loader=torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-train_loader_org=torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=False)
-
-stn_test(train_loader, 'shuffled')
-
-trainloader=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='./shuffled/', 
-                                          transform=Transform), batch_size=1, shuffle=True)
+#train_loader_org=torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=False)
+#
+#stn_test(train_loader, 'shuffled')
+#
+#trainloader=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='./shuffled/', 
+#                                          transform=Transform), batch_size=1, shuffle=True)
 
 #
 #trainloader_org=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='./aligned/original', 
@@ -103,33 +103,33 @@ trainloader=torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root='.
 
 # Train the model
 
-for j in range (10):
-    model1.train()
-    model2a.train()
-    model2b.train()
-    
-    for i, data in enumerate(trainloader):
-        inputs, target = data[0].to(device), data[1].to(device)
-        target_f = torch.Tensor.float(target)
+#for j in range (10):
+#    model1.train()
+#    model2a.train()
+#    model2b.train()
+#    
+#    for i, data in enumerate(trainloader):
+#        inputs, target = data[0].to(device), data[1].to(device)
+#        target_f = torch.Tensor.float(target)
+#        
+#        optimizer1.zero_grad()
+#        optimizer2a.zero_grad()
+#        optimizer2b.zero_grad()
+#        
+#        output1 = model1(inputs)[0]
+#        output2a = model2a(inputs)
+#        output2b = model2b(inputs)[0]
+#        
+#        loss = (criterion1(F.softmax(output1), target) + criterion2a(output2a, target_f) + 
+#                criterion2b(F.softmax(output2b), target))
+#        loss.backward()
+#        
+#        optimizer1.step()
+#        optimizer2a.step()
+#        optimizer2b.step()
+#        
+#        print(j, i, loss.item())
         
-        optimizer1.zero_grad()
-        optimizer2a.zero_grad()
-        optimizer2b.zero_grad()
-        
-        output1 = model1(inputs)[0]
-        output2a = model2a(inputs)
-        output2b = model2b(inputs)[0]
-        
-        loss = (criterion1(F.softmax(output1), target) + criterion2a(output2a, target_f) + 
-                criterion2b(F.softmax(output2b), target))
-        loss.backward()
-        
-        optimizer1.step()
-        optimizer2a.step()
-        optimizer2b.step()
-        
-        print(j, i, loss.item())
-        
-torch.save(model1, 'trained1.pth')
-torch.save(model2a, 'trained2a.pth')
-torch.save(model2b, 'trained2b.pth')
+#torch.save(model1, 'trained1.pth')
+#torch.save(model2a, 'trained2a.pth')
+#torch.save(model2b, 'trained2b.pth')
